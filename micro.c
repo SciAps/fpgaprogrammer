@@ -1771,7 +1771,7 @@ int main( int iArgc, char** ppzArgv )
 
     for ( i = 1; i < iArgc ; ++i )
     {
-        if ( !_stricmp( ppzArgv[ i ], "-v" ) )
+        if ( !strcasecmp( ppzArgv[ i ], "-v" ) )
         {
             ++i;
             if ( i >= iArgc )
