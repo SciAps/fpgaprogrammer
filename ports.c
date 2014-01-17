@@ -12,89 +12,108 @@
 #include "ports.h"
 /*#include "prgispx.h"*/
 
-#include "stdio.h"
+#include <stdio.h>
+#include <unistd.h>
 extern FILE *in;
 static int  g_iTCK = 0; /* For xapp058_example .exe */
 static int  g_iTMS = 0; /* For xapp058_example .exe */
 static int  g_iTDI = 0; /* For xapp058_example .exe */
 
-#ifdef WIN95PP
-#include "conio.h"
+static FILE* fvTMS;
+static FILE* fvTDI;
+static FILE* fvTCK;
+static FILE* fvTDO;
 
-#define DATA_OFFSET    (unsigned short) 0
-#define STATUS_OFFSET  (unsigned short) 1
-#define CONTROL_OFFSET (unsigned short) 2
+static int setupGPIO(const int gpio, const char* direction, FILE** valueFile)
+{
+    int retval;
+    FILE* fd;
+    char buf[512];
 
-typedef union outPortUnion {
-    unsigned char value;
-    struct opBitsStr {
-        unsigned char tdi:1;
-        unsigned char tck:1;
-        unsigned char tms:1;
-        unsigned char zero:1;
-        unsigned char one:1;
-        unsigned char bit5:1;
-        unsigned char bit6:1;
-        unsigned char bit7:1;
-    } bits;
-} outPortType;
+    //export the gpio pins
+    fd = fopen("/sys/class/gpio/export", "w");
+    retval = fprintf(fd, "%d", gpio); 
+    fclose(fd);
+    if(retval < 0) { return retval; }
 
-typedef union inPortUnion {
-    unsigned char value;
-    struct ipBitsStr {
-        unsigned char bit0:1;
-        unsigned char bit1:1;
-        unsigned char bit2:1;
-        unsigned char bit3:1;
-        unsigned char tdo:1;
-        unsigned char bit5:1;
-        unsigned char bit6:1;
-        unsigned char bit7:1;
-    } bits;
-} inPortType;
+    sprintf(buf, "/sys/class/gpio/gpio%d/direction", gpio);
+    fd = fopen(buf, "w");
+    retval = fputs(direction, fd);
+    if(retval < 0) { return retval; }
 
-static inPortType in_word;
-static outPortType out_word;
-static unsigned short base_port = 0x378;
-static int once = 0;
-#endif
+    sprintf(buf, "/sys/class/gpio/gpio%d/value", gpio);
+    if(direction[0] == 'i') {
+        *valueFile = fopen(buf, "r");
+    } else if(direction[0] == 'o') {
+        *valueFile = fopen(buf, "w");
+        setvbuf(*valueFile, (char *)NULL, _IONBF, 0);
+    } else {
+        printf("ERROR: unknown direction: %s must be either 'in' or 'out'\n", direction);
+    }
+
+    return 0;
+}
+
+int hardwareSetup()
+{
+    int retval;
+    
+
+    /*
+        GPIO 110 ==> JTAG_TMS
+        GPIO 112 ==> JTAG_TDI 
+        GPIO 114 ==> JTAG_TCK
+        GPIO 115 ==> JTAG_TDO
+    */
+
+    retval = setupGPIO(110, "out", &fvTMS);
+    if(retval) { return retval; }
+
+    retval = setupGPIO(112, "out", &fvTDI);
+    if(retval) { return retval; }
+
+    retval = setupGPIO(114, "out", &fvTCK);
+    if(retval) { return retval; }
+
+    retval = setupGPIO(115, "in", &fvTDO);
+    if(retval) { return retval; }
+
+    retval = 0;
+    return retval;
+}
 
 
 /*BYTE *xsvf_data=0;*/
 
+static void writeGPIO(FILE* fv, short value)
+{
+    int retval;
+    retval = 0;
+
+    switch(value) {
+        case 1:
+        retval = fputc('1', fv);
+        break;
+
+        case 0:
+        retval = fputc('0', fv);
+        break;
+
+        default:
+        printf("ERROR: unknown writeGPIO value: %d\n", value);
+        break;
+    }
+
+    if(retval == EOF){
+        printf("ERROR: writeGPIO returned: %d\n", retval);
+    }
+}
 
 /* setPort:  Implement to set the named JTAG signal (p) to the new value (v).*/
 /* if in debugging mode, then just set the variables */
 void setPort(short p,short val)
 {
-#ifdef WIN95PP
-    /* Old Win95 example that is similar to a GPIO register implementation.
-       The old Win95 example maps individual bits of the 
-       8-bit register (out_word) to the JTAG signals: TCK, TMS, TDI. 
-       */
 
-    /* Initialize static out_word register bits just once */
-    if (once == 0) {
-        out_word.bits.one = 1;
-        out_word.bits.zero = 0;
-        once = 1;
-    }
-
-    /* Update the local out_word copy of the JTAG signal to the new value. */
-    if (p==TMS)
-        out_word.bits.tms = (unsigned char) val;
-    if (p==TDI)
-        out_word.bits.tdi = (unsigned char) val;
-    if (p==TCK) {
-        out_word.bits.tck = (unsigned char) val;
-        (void) _outp( (unsigned short) (base_port + 0), out_word.value );
-        /* To save HW write cycles, this example only writes the local copy
-           of the JTAG signal values to the HW register when TCK changes. */
-    }
-#endif
-    /* Printing code for the xapp058_example.exe.  You must set the specified
-       JTAG signal (p) to the new value (v).  See the above, old Win95 code
-       as an implementation example. */
     if (p==TMS)
         g_iTMS = val;
     if (p==TDI)
@@ -102,6 +121,12 @@ void setPort(short p,short val)
     if (p==TCK) {
         g_iTCK = val;
         printf( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
+
+        writeGPIO(fvTMS, g_iTMS);
+        writeGPIO(fvTDI, g_iTDI);
+        writeGPIO(fvTCK, g_iTCK);
+
+        usleep(1000);
     }
 }
 
@@ -127,19 +152,35 @@ void readByte(unsigned char *data)
 /* read the TDO bit from port */
 unsigned char readTDOBit()
 {
-#ifdef WIN95PP
-    /* Old Win95 example that is similar to a GPIO register implementation.
-       The old Win95 reads the hardware input register and extracts the TDO
-       value from the bit within the register that is assigned to the
-       physical JTAG TDO signal. 
-       */
-    in_word.value = (unsigned char) _inp( (unsigned short) (base_port + STATUS_OFFSET) );
-    if (in_word.bits.tdo == 0x1) {
-        return( (unsigned char) 1 );
+
+    unsigned char retval;
+    retval = 0;
+
+    
+    //FILE* fd = fopen("/sys/class/gpio/gpio115/value", "r");
+    //int value = fgetc(fd);
+    //fclose(fd);
+    
+
+    int value = fgetc(fvTDO);
+    fseek(fvTDO, 0, SEEK_SET);
+    switch(value) {
+        case '1':
+        retval = 1;
+        break;
+
+        case '0':
+        retval = 0;
+        break;
+
+        default:
+        printf( "Error: readTDOBit is not either a 1 or 0. its: %d\n", value);
+        break;
     }
-#endif
-    /* You must return the current value of the JTAG TDO signal. */
-    return( (unsigned char) 0 );
+
+    printf("TDO: %d\n", retval);
+
+    return retval;
 }
 
 /* waitTime:  Implement as follows: */
@@ -157,14 +198,22 @@ void waitTime(long microsec)
     long        tckCycles   = microsec * tckCyclesPerMicrosec;
     long        i;
 
+
+    for(i=0;i<microsec;i++){
+        setPort(TCK,0);  /* set the TCK port to low  */
+        usleep(1000);
+        setPort(TCK,1);  /* set the TCK port to high */
+        usleep(1000);
+    }
+
     /* This implementation is highly recommended!!! */
     /* This implementation requires you to tune the tckCyclesPerMicrosec 
        variable (above) to match the performance of your embedded system
        in order to satisfy the microsec wait time requirement. */
-    for ( i = 0; i < tckCycles; ++i )
-    {
-        pulseClock();
-    }
+    //for ( i = 0; i < tckCycles; ++i )
+    //{
+    //   pulseClock();
+    //}
 
 #if 0
     /* Alternate implementation */

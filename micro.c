@@ -1742,6 +1742,7 @@ int xsvfExecute()
 }
 
 
+extern int hardwareSetup();
 /*============================================================================
 * main
 ============================================================================*/
@@ -1768,6 +1769,12 @@ int main( int iArgc, char** ppzArgv )
     pzXsvfFileName      = 0;
 
     printf( "XSVF Player v%s, Xilinx, Inc.\n", XSVF_VERSION );
+
+    i = hardwareSetup();
+    if(i != 0){
+        printf("Error: hardwareSetup failed: %d", i);
+        return i;
+    }
 
     for ( i = 1; i < iArgc ; ++i )
     {
