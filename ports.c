@@ -172,7 +172,7 @@ unsigned char readTDOBit()
         break;
     }
 
-    printf("TDO: %d\n", retval);
+    //printf("TDO: %d\n", retval);
 
     return retval;
 }
