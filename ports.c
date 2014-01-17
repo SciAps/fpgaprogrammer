@@ -24,6 +24,8 @@ static FILE* fvTDI;
 static FILE* fvTCK;
 static FILE* fvTDO;
 
+#define USLEEPTIME 1
+
 static int setupGPIO(const int gpio, const char* direction, FILE** valueFile)
 {
     int retval;
@@ -120,22 +122,14 @@ void setPort(short p,short val)
         g_iTDI = val;
     if (p==TCK) {
         g_iTCK = val;
-        printf( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
+        //printf( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
 
         writeGPIO(fvTMS, g_iTMS);
         writeGPIO(fvTDI, g_iTDI);
         writeGPIO(fvTCK, g_iTCK);
 
-        usleep(1000);
+        //usleep(USLEEPTIME);
     }
-}
-
-
-/* toggle tck LH.  No need to modify this code.  It is output via setPort. */
-void pulseClock()
-{
-    setPort(TCK,0);  /* set the TCK port to low  */
-    setPort(TCK,1);  /* set the TCK port to high */
 }
 
 
@@ -157,13 +151,13 @@ unsigned char readTDOBit()
     retval = 0;
 
     
-    //FILE* fd = fopen("/sys/class/gpio/gpio115/value", "r");
-    //int value = fgetc(fd);
-    //fclose(fd);
+    FILE* fd = fopen("/sys/class/gpio/gpio115/value", "r");
+    int value = fgetc(fd);
+    fclose(fd);
     
 
-    int value = fgetc(fvTDO);
-    fseek(fvTDO, 0, SEEK_SET);
+    //fseek(fvTDO, 0, SEEK_SET);
+    //int value = fgetc(fvTDO);
     switch(value) {
         case '1':
         retval = 1;
@@ -201,9 +195,9 @@ void waitTime(long microsec)
 
     for(i=0;i<microsec;i++){
         setPort(TCK,0);  /* set the TCK port to low  */
-        usleep(1000);
+        //usleep(USLEEPTIME);
         setPort(TCK,1);  /* set the TCK port to high */
-        usleep(1000);
+        //usleep(USLEEPTIME);
     }
 
     /* This implementation is highly recommended!!! */
