@@ -13,43 +13,53 @@
 /*#include "prgispx.h"*/
 
 #include <fcntl.h>
-
 #include <unistd.h>
+#include <stdio.h>
+
 extern FILE *in;
+
 static int  g_iTCK = 0; /* For xapp058_example .exe */
 static int  g_iTMS = 0; /* For xapp058_example .exe */
 static int  g_iTDI = 0; /* For xapp058_example .exe */
 
-static FILE* fvTMS;
-static FILE* fvTDI;
-static FILE* fvTCK;
-static FILE* fvTDO;
+static int fvTMS;
+static int fvTDI;
+static int fvTCK;
+static int fvTDO;
 
 #define USLEEPTIME 1
 
-static int setupGPIO(const int gpio, const char* direction, FILE** valueFile)
+static int setupGPIO(const int gpio, const char* direction, int* valueFile)
 {
-    int retval;
-    FILE* fd;
+    int fd;
     char buf[512];
 
     //export the gpio pins
-    fd = fopen("/sys/class/gpio/export", "w");
-    retval = fprintf(fd, "%d", gpio); 
-    fclose(fd);
-    if(retval < 0) { return retval; }
+    fd = open("/sys/class/gpio/export", O_WRONLY);
+    if(fd < 0) { printf("error opening /sys/class/gpio/export\n"); return fd; }
+    sprintf(buf, "%d", gpio);
+    write(fd, buf, strlen(buf));
+    close(fd);
+    
 
     sprintf(buf, "/sys/class/gpio/gpio%d/direction", gpio);
-    fd = fopen(buf, "w");
-    retval = fputs(direction, fd);
-    if(retval < 0) { return retval; }
+    fd = open(buf, O_WRONLY);
+    if(fd < 0) { printf("error opening %s\n", buf); return fd; }
+    write(fd, direction, strlen(direction));
+    close(fd);
+
+    sprintf(buf, "/sys/class/gpio/gpio%d/active_low", gpio);
+    fd = open(buf, O_WRONLY);
+    if(fd < 0) { printf("error opening %s\n", buf); return fd; }
+    write(fd, "0", 1);
+    close(fd);
 
     sprintf(buf, "/sys/class/gpio/gpio%d/value", gpio);
     if(direction[0] == 'i') {
-        *valueFile = fopen(buf, "r");
+        *valueFile = open(buf, O_RDONLY);
     } else if(direction[0] == 'o') {
-        *valueFile = fopen(buf, "w");
-        setvbuf(*valueFile, (char *)NULL, _IONBF, 0);
+        *valueFile = open(buf, O_WRONLY);
+        //setvbuf(*valueFile, (char *)NULL, _IONBF, 0);
     } else {
         printf("ERROR: unknown direction: %s must be either 'in' or 'out'\n", direction);
     }
@@ -90,18 +100,18 @@ int hardwareSetup()
 
 /*BYTE *xsvf_data=0;*/
 
-static void writeGPIO(FILE* fv, short value)
+static void writeGPIO(int fv, short value)
 {
     int retval;
     retval = 0;
 
     switch(value) {
         case 1:
-        retval = fputc('1', fv);
+        retval = write(fv, "1", 1);
         break;
 
         case 0:
-        retval = fputc('0', fv);
+        retval = write(fv, "0", 1);
         break;
 
         default:
@@ -109,7 +119,7 @@ static void writeGPIO(FILE* fv, short value)
         break;
     }
 
-    if(retval == EOF){
+    if(retval != 1){
         printf("ERROR: writeGPIO returned: %d\n", retval);
     }
 }
@@ -151,16 +161,15 @@ unsigned char readTDOBit()
 {
 
     unsigned char retval;
-    retval = 0;
+    char value;
 
+    //lseek(fvTDO, 0, SEEK_SET);
+    //read(fvTDO, &value, 1);
     
-    FILE* fd = fopen("/sys/class/gpio/gpio115/value", "r");
-    int value = fgetc(fd);
-    fclose(fd);
+    int fd = open("/sys/class/gpio/gpio115/value", O_RDONLY);
+    read(fd, &value, 1);
+    close(fd);
     
-
-    //fseek(fvTDO, 0, SEEK_SET);
-    //int value = fgetc(fvTDO);
     switch(value) {
         case '1':
         retval = 1;
@@ -172,10 +181,11 @@ unsigned char readTDOBit()
 
         default:
         printf( "Error: readTDOBit is not either a 1 or 0. its: %d\n", value);
+        retval = value;
         break;
     }
 
-    printf("TDO: %d\n", retval);
+    //printf("TDO: %d\n", retval);
 
     return retval;
 }
