@@ -12,7 +12,8 @@
 #include "ports.h"
 /*#include "prgispx.h"*/
 
-#include <stdio.h>
+#include <fcntl.h>
+
 #include <unistd.h>
 extern FILE *in;
 static int  g_iTCK = 0; /* For xapp058_example .exe */
@@ -67,6 +68,8 @@ int hardwareSetup()
         GPIO 114 ==> JTAG_TCK
         GPIO 115 ==> JTAG_TDO
     */
+
+    printf("doing hardware setup\n");
 
     retval = setupGPIO(110, "out", &fvTMS);
     if(retval) { return retval; }
@@ -172,7 +175,7 @@ unsigned char readTDOBit()
         break;
     }
 
-    //printf("TDO: %d\n", retval);
+    printf("TDO: %d\n", retval);
 
     return retval;
 }
