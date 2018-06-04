@@ -29,6 +29,9 @@ static int fvTDO;
 
 #define USLEEPTIME 1
 
+#include <android/log.h>
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, "FPGA_PROGRAMMER",__VA_ARGS__)
+
 static int setupGPIO(const int gpio, const char* direction, int* valueFile)
 {
     int fd;
@@ -36,7 +39,7 @@ static int setupGPIO(const int gpio, const char* direction, int* valueFile)
 
     //export the gpio pins
     fd = open("/sys/class/gpio/export", O_WRONLY);
-    if(fd < 0) { printf("error opening /sys/class/gpio/export\n"); return fd; }
+    if(fd < 0) { LOGV("error opening /sys/class/gpio/export\n"); return fd; }
     sprintf(buf, "%d", gpio);
     write(fd, buf, strlen(buf));
     close(fd);
@@ -44,13 +47,13 @@ static int setupGPIO(const int gpio, const char* direction, int* valueFile)
 
     sprintf(buf, "/sys/class/gpio/gpio%d/direction", gpio);
     fd = open(buf, O_WRONLY);
-    if(fd < 0) { printf("error opening %s\n", buf); return fd; }
+    if(fd < 0) { LOGV("error opening %s\n", buf); return fd; }
     write(fd, direction, strlen(direction));
     close(fd);
 
     sprintf(buf, "/sys/class/gpio/gpio%d/active_low", gpio);
     fd = open(buf, O_WRONLY);
-    if(fd < 0) { printf("error opening %s\n", buf); return fd; }
+    if(fd < 0) { LOGV("error opening %s\n", buf); return fd; }
     write(fd, "0", 1);
     close(fd);
 
@@ -61,7 +64,7 @@ static int setupGPIO(const int gpio, const char* direction, int* valueFile)
         *valueFile = open(buf, O_WRONLY);
         //setvbuf(*valueFile, (char *)NULL, _IONBF, 0);
     } else {
-        printf("ERROR: unknown direction: %s must be either 'in' or 'out'\n", direction);
+        LOGV("ERROR: unknown direction: %s must be either 'in' or 'out'\n", direction);
     }
 
     return 0;
@@ -79,7 +82,7 @@ int hardwareSetup()
         GPIO 115 ==> JTAG_TDO
     */
 
-    printf("doing hardware setup\n");
+    LOGV("doing hardware setup\n");
 
     retval = setupGPIO(110, "out", &fvTMS);
     if(retval) { return retval; }
@@ -115,12 +118,12 @@ static void writeGPIO(int fv, short value)
         break;
 
         default:
-        printf("ERROR: unknown writeGPIO value: %d\n", value);
+        LOGV("ERROR: unknown writeGPIO value: %d\n", value);
         break;
     }
 
     if(retval != 1){
-        printf("ERROR: writeGPIO returned: %d\n", retval);
+        LOGV("ERROR: writeGPIO returned: %d\n", retval);
     }
 }
 
@@ -135,13 +138,13 @@ void setPort(short p,short val)
         g_iTDI = val;
     if (p==TCK) {
         g_iTCK = val;
-        //printf( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
+        LOGV( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
 
         writeGPIO(fvTMS, g_iTMS);
         writeGPIO(fvTDI, g_iTDI);
         writeGPIO(fvTCK, g_iTCK);
 
-        //usleep(USLEEPTIME);
+        usleep(USLEEPTIME);
     }
 }
 
@@ -180,12 +183,12 @@ unsigned char readTDOBit()
         break;
 
         default:
-        printf( "Error: readTDOBit is not either a 1 or 0. its: %d\n", value);
+        LOGV( "Error: readTDOBit is not either a 1 or 0. its: %d\n", value);
         retval = value;
         break;
     }
 
-    //printf("TDO: %d\n", retval);
+    LOGV("TDO: %d\n", retval);
 
     return retval;
 }

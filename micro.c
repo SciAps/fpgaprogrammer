@@ -61,6 +61,8 @@
 #include "lenval.h"
 #include "ports.h"
 
+#include <android/log.h>
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, "FPGA_PROGRAMMER",__VA_ARGS__)
 
 /*============================================================================
 * XSVF #define
@@ -117,16 +119,16 @@
 #ifdef  DEBUG_MODE
     #define XSVFDBG_PRINTF(iDebugLevel,pzFormat) \
                 { if ( xsvf_iDebugLevel >= iDebugLevel ) \
-                    printf( pzFormat ); }
+                    LOGV( pzFormat ); }
     #define XSVFDBG_PRINTF1(iDebugLevel,pzFormat,arg1) \
                 { if ( xsvf_iDebugLevel >= iDebugLevel ) \
-                    printf( pzFormat, arg1 ); }
+                    LOGV( pzFormat, arg1 ); }
     #define XSVFDBG_PRINTF2(iDebugLevel,pzFormat,arg1,arg2) \
                 { if ( xsvf_iDebugLevel >= iDebugLevel ) \
-                    printf( pzFormat, arg1, arg2 ); }
+                    LOGV( pzFormat, arg1, arg2 ); }
     #define XSVFDBG_PRINTF3(iDebugLevel,pzFormat,arg1,arg2,arg3) \
                 { if ( xsvf_iDebugLevel >= iDebugLevel ) \
-                    printf( pzFormat, arg1, arg2, arg3 ); }
+                    LOGV( pzFormat, arg1, arg2, arg3 ); }
     #define XSVFDBG_PRINTLENVAL(iDebugLevel,plenVal) \
                 { if ( xsvf_iDebugLevel >= iDebugLevel ) \
                     xsvfPrintLenVal(plenVal); }
@@ -410,10 +412,10 @@ void xsvfPrintLenVal( lenVal *plv )
 
     if ( plv )
     {
-        printf( "0x" );
+        LOGV( "0x" );
         for ( i = 0; i < plv->len; ++i )
         {
-            printf( "%02x", ((unsigned int)(plv->val[ i ])) );
+            LOGV( "%02x", ((unsigned int)(plv->val[ i ])) );
         }
     }
 }
@@ -1741,7 +1743,6 @@ int xsvfExecute()
     return( XSVF_ERRORCODE(xsvfInfo.iErrorCode) );
 }
 
-
 extern int hardwareSetup();
 /*============================================================================
 * main
@@ -1768,11 +1769,11 @@ int main( int iArgc, char** ppzArgv )
     iErrorCode          = XSVF_ERRORCODE( XSVF_ERROR_NONE );
     pzXsvfFileName      = 0;
 
-    printf( "XSVF Player v%s, Xilinx, Inc.\n", XSVF_VERSION );
+    LOGV( "XSVF Player v%s, Xilinx, Inc.\n", XSVF_VERSION );
 
     i = hardwareSetup();
     if(i != 0){
-        printf("Error: hardwareSetup failed: %d", i);
+        LOGV("Error: hardwareSetup failed: %d", i);
         return i;
     }
 
@@ -1783,26 +1784,26 @@ int main( int iArgc, char** ppzArgv )
             ++i;
             if ( i >= iArgc )
             {
-                printf( "ERROR:  missing <level> parameter for -v option.\n" );
+                LOGV( "ERROR:  missing <level> parameter for -v option.\n" );
             }
             else
             {
                 xsvf_iDebugLevel    = atoi( ppzArgv[ i ] );
-                printf( "Verbose level = %d\n", xsvf_iDebugLevel );
+                LOGV( "Verbose level = %d\n", xsvf_iDebugLevel );
             }
         }
         else
         {
             pzXsvfFileName  = ppzArgv[ i ];
-            printf( "XSVF file = %s\n", pzXsvfFileName );
+            LOGV( "XSVF file = %s\n", pzXsvfFileName );
         }
     }
 
     if ( !pzXsvfFileName )
     {
-        printf( "USAGE:  playxsvf [-v level] filename.xsvf\n" );
-        printf( "where:  -v level      = verbose, level = 0-4 (default=0)\n" );
-        printf( "        filename.xsvf = the XSVF file to execute.\n" );
+        LOGV( "USAGE:  playxsvf [-v level] filename.xsvf\n" );
+        LOGV( "where:  -v level      = verbose, level = 0-4 (default=0)\n" );
+        LOGV( "        filename.xsvf = the XSVF file to execute.\n" );
     }
     else
     {
@@ -1810,7 +1811,7 @@ int main( int iArgc, char** ppzArgv )
         in = fopen( pzXsvfFileName, "rb" );
         if ( !in )
         {
-            printf( "ERROR:  Cannot open file %s\n", pzXsvfFileName );
+            LOGV( "ERROR:  Cannot open file %s\n", pzXsvfFileName );
             iErrorCode  = XSVF_ERRORCODE( XSVF_ERROR_UNKNOWN );
         }
         else
@@ -1823,7 +1824,7 @@ int main( int iArgc, char** ppzArgv )
             iErrorCode  = xsvfExecute();
             endClock    = clock();
             fclose( in );
-            printf( "Execution Time = %.3f seconds\n",
+            LOGV( "Execution Time = %.3f seconds\n",
                     (((double)(endClock - startClock))/CLOCKS_PER_SEC) );
         }
     }
