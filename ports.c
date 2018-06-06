@@ -209,12 +209,14 @@ void waitTime(long microsec)
     long        i;
 
 
+#if 0
     for(i=0;i<microsec;i++){
         setPort(TCK,0);  /* set the TCK port to low  */
         //usleep(USLEEPTIME);
         setPort(TCK,1);  /* set the TCK port to high */
         //usleep(USLEEPTIME);
     }
+#endif
 
     /* This implementation is highly recommended!!! */
     /* This implementation requires you to tune the tckCyclesPerMicrosec 
@@ -248,7 +250,7 @@ void waitTime(long microsec)
     }
 #endif
 
-#if 0
+#if 1
     /* Alternate implementation */
     /* This implementation is valid for only XC9500/XL/XV, CoolRunner/II CPLDs, 
        XC18V00 PROMs, or Platform Flash XCFxxS/XCFxxP PROMs.  
