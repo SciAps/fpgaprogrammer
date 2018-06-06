@@ -138,7 +138,7 @@ void setPort(short p,short val)
         g_iTDI = val;
     if (p==TCK) {
         g_iTCK = val;
-        LOGV( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
+        //LOGV( "TCK = %d;  TMS = %d;  TDI = %d\n", g_iTCK, g_iTMS, g_iTDI );
 
         writeGPIO(fvTMS, g_iTMS);
         writeGPIO(fvTDI, g_iTDI);
