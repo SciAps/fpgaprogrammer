@@ -259,6 +259,7 @@ void waitTime(long microsec)
     /* Or, a running TCK implementation as shown above is an OK alternate */
     setPort( TCK, 0 );
     /* Use Windows Sleep().  Round up to the nearest millisec */
-    _sleep( ( microsec + 999L ) / 1000L );
+//    _sleep( ( microsec + 999L ) / 1000L );
+    usleep(microsec);
 #endif
 }
