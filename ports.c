@@ -188,7 +188,7 @@ unsigned char readTDOBit()
         break;
     }
 
-    LOGV("TDO: %d\n", retval);
+    //LOGV("TDO: %d\n", retval);
 
     return retval;
 }
