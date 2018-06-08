@@ -1104,38 +1104,39 @@ int xsvfDoXTDOMASK( SXsvfInfo* pXsvfInfo )
 *****************************************************************************/
 int xsvfDoXSIR( SXsvfInfo* pXsvfInfo )
 {
-    unsigned char   ucShiftIrBits;
-    short           sShiftIrBytes;
-    int             iErrorCode;
-
-    /* Get the shift length and store */
-    readByte( &ucShiftIrBits );
-    sShiftIrBytes   = xsvfGetAsNumBytes( ucShiftIrBits );
-    XSVFDBG_PRINTF1( 3, "   XSIR length = %d\n",
-                     ((unsigned int)ucShiftIrBits) );
-
-    if ( sShiftIrBytes > MAX_LEN )
-    {
-        iErrorCode  = XSVF_ERROR_DATAOVERFLOW;
-    }
-    else
-    {
-        /* Get and store instruction to shift in */
-        readVal( &(pXsvfInfo->lvTdi), xsvfGetAsNumBytes( ucShiftIrBits ) );
-
-        /* Shift the data */
-        iErrorCode  = xsvfShift( &(pXsvfInfo->ucTapState), XTAPSTATE_SHIFTIR,
-                                 ucShiftIrBits, &(pXsvfInfo->lvTdi),
-                                 /*plvTdoCaptured*/0, /*plvTdoExpected*/0,
-                                 /*plvTdoMask*/0, pXsvfInfo->ucEndIR,
-                                 pXsvfInfo->lRunTestTime, /*ucMaxRepeat*/0 );
-    }
-
-    if ( iErrorCode != XSVF_ERROR_NONE )
-    {
-        pXsvfInfo->iErrorCode   = iErrorCode;
-    }
-    return( iErrorCode );
+    return xsvfDoXSIR2(pXsvfInfo);
+//    unsigned char   ucShiftIrBits;
+//    short           sShiftIrBytes;
+//    int             iErrorCode;
+//
+//    /* Get the shift length and store */
+//    readByte( &ucShiftIrBits );
+//    sShiftIrBytes   = xsvfGetAsNumBytes( ucShiftIrBits );
+//    XSVFDBG_PRINTF1( 3, "   XSIR length = %d\n",
+//                     ((unsigned int)ucShiftIrBits) );
+//
+//    if ( sShiftIrBytes > MAX_LEN )
+//    {
+//        iErrorCode  = XSVF_ERROR_DATAOVERFLOW;
+//    }
+//    else
+//    {
+//        /* Get and store instruction to shift in */
+//        readVal( &(pXsvfInfo->lvTdi), xsvfGetAsNumBytes( ucShiftIrBits ) );
+//
+//        /* Shift the data */
+//        iErrorCode  = xsvfShift( &(pXsvfInfo->ucTapState), XTAPSTATE_SHIFTIR,
+//                                 ucShiftIrBits, &(pXsvfInfo->lvTdi),
+//                                 /*plvTdoCaptured*/0, /*plvTdoExpected*/0,
+//                                 /*plvTdoMask*/0, pXsvfInfo->ucEndIR,
+//                                 pXsvfInfo->lRunTestTime, /*ucMaxRepeat*/0 );
+//    }
+//
+//    if ( iErrorCode != XSVF_ERROR_NONE )
+//    {
+//        pXsvfInfo->iErrorCode   = iErrorCode;
+//    }
+//    return( iErrorCode );
 }
 
 /*****************************************************************************
