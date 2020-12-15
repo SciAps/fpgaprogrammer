@@ -15,6 +15,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
 
 extern FILE *in;
 
@@ -40,7 +42,6 @@ static int setupGPIO(const int gpio, const char* direction, int* valueFile)
     sprintf(buf, "%d", gpio);
     write(fd, buf, strlen(buf));
     close(fd);
-    
 
     sprintf(buf, "/sys/class/gpio/gpio%d/direction", gpio);
     fd = open(buf, O_WRONLY);
@@ -67,30 +68,33 @@ static int setupGPIO(const int gpio, const char* direction, int* valueFile)
     return 0;
 }
 
+/*
+    GPIO 927 ==> JTAG_TMS
+    GPIO 926 ==> JTAG_TDI
+    GPIO 954 ==> JTAG_TCK
+    GPIO 951 ==> JTAG_TDO
+*/
+#define JTAG_TMS 927
+#define JTAG_TDI 926
+#define JTAG_TCK 954
+#define JTAG_TDO 951
 int hardwareSetup()
 {
     int retval;
-    
 
-    /*
-        GPIO 110 ==> JTAG_TMS
-        GPIO 112 ==> JTAG_TDI 
-        GPIO 114 ==> JTAG_TCK
-        GPIO 115 ==> JTAG_TDO
-    */
 
     printf("doing hardware setup\n");
 
-    retval = setupGPIO(110, "out", &fvTMS);
+    retval = setupGPIO(JTAG_TMS, "out", &fvTMS);
     if(retval) { return retval; }
 
-    retval = setupGPIO(112, "out", &fvTDI);
+    retval = setupGPIO(JTAG_TDI, "out", &fvTDI);
     if(retval) { return retval; }
 
-    retval = setupGPIO(114, "out", &fvTCK);
+    retval = setupGPIO(JTAG_TCK, "out", &fvTCK);
     if(retval) { return retval; }
 
-    retval = setupGPIO(115, "in", &fvTDO);
+    retval = setupGPIO(JTAG_TDO, "in", &fvTDO);
     if(retval) { return retval; }
 
     retval = 0;
@@ -159,34 +163,23 @@ void readByte(unsigned char *data)
 /* read the TDO bit from port */
 unsigned char readTDOBit()
 {
-
-    unsigned char retval;
-    char value;
-
-    //lseek(fvTDO, 0, SEEK_SET);
-    //read(fvTDO, &value, 1);
-    
-    int fd = open("/sys/class/gpio/gpio115/value", O_RDONLY);
-    read(fd, &value, 1);
-    close(fd);
-    
-    switch(value) {
-        case '1':
-        retval = 1;
-        break;
-
-        case '0':
-        retval = 0;
-        break;
-
-        default:
-        printf( "Error: readTDOBit is not either a 1 or 0. its: %d\n", value);
-        retval = value;
-        break;
+    if (lseek(fvTDO, 0, SEEK_SET) < 0) {
+        printf("ERROR: readTDOBit - lseek failed: %s\n", strerror(errno));
+        close(fvTDO);
+        fvTDO = -1;
+        return 255;
     }
 
-    //printf("TDO: %d\n", retval);
+    char buf[2] = { 0, 0 };
+    if (read(fvTDO, buf, 1) < 0) {
+        printf("ERROR: readTDOBit - read failed: %s\n", strerror(errno));
+        close(fvTDO);
+        fvTDO = -1;
+        return 255;
+    }
 
+    unsigned char retval = atoi(buf);
+//    printf("TDO: %d\n", retval);
     return retval;
 }
 
@@ -206,15 +199,17 @@ void waitTime(long microsec)
     long        i;
 
 
+#if 0
     for(i=0;i<microsec;i++){
         setPort(TCK,0);  /* set the TCK port to low  */
         //usleep(USLEEPTIME);
         setPort(TCK,1);  /* set the TCK port to high */
         //usleep(USLEEPTIME);
     }
+#endif
 
     /* This implementation is highly recommended!!! */
-    /* This implementation requires you to tune the tckCyclesPerMicrosec 
+    /* This implementation requires you to tune the tckCyclesPerMicrosec
        variable (above) to match the performance of your embedded system
        in order to satisfy the microsec wait time requirement. */
     //for ( i = 0; i < tckCycles; ++i )
@@ -245,15 +240,15 @@ void waitTime(long microsec)
     }
 #endif
 
-#if 0
+#if 1
     /* Alternate implementation */
-    /* This implementation is valid for only XC9500/XL/XV, CoolRunner/II CPLDs, 
-       XC18V00 PROMs, or Platform Flash XCFxxS/XCFxxP PROMs.  
+    /* This implementation is valid for only XC9500/XL/XV, CoolRunner/II CPLDs,
+       XC18V00 PROMs, or Platform Flash XCFxxS/XCFxxP PROMs.
        This implementation does not work with FPGAs JTAG configuration. */
     /* Make sure TCK is low during wait for XC18V00/XCFxxS PROMs */
     /* Or, a running TCK implementation as shown above is an OK alternate */
     setPort( TCK, 0 );
     /* Use Windows Sleep().  Round up to the nearest millisec */
-    _sleep( ( microsec + 999L ) / 1000L );
+    usleep(microsec);
 #endif
 }
